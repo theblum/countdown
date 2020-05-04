@@ -143,22 +143,30 @@ createXImage(X11State *x11)
 }
 
 internal void
-drawGradient(X11State *x11, f32 delta, s32 fade)
+drawGradient(X11State *x11, u32 color, f32 delta, s32 fade)
 {
+    /* @Todo: Optimize all this! */
+
+    /* @Todo: This gradient doesn't look good on my monitor.  It's not very smooth. */
+    f32 halfPI = M_PI / 2.0f;
     s32 width = x11->ximage->width;
     s32 height = x11->ximage->height;
     u32 *data = (u32 *)x11->ximage->data;
     for(s32 y = 0; y < height; ++y) {
         for(s32 x = 0; x < width; ++x) {
+            f32 alphaMult = CLAMP(1.0 - ((f32)x/width) * ((f32)y/height));
             u32 *pixel = &data[y*width + x];
-            *pixel = 0xffee8833;
+            u8 alpha = (u8)(((color & 0xff000000) >> 24) * alphaMult);
+            u8 red   = (u8)(((color & 0x00ff0000) >> 16) * alphaMult);
+            u8 green = (u8)(((color & 0x0000ff00) >> 8)  * alphaMult);
+            u8 blue  = (u8)(((color & 0x000000ff) >> 0)  * alphaMult);
+            *pixel = (alpha << 24) | (red << 16) | (green << 8) | blue;
         }
     }
 
     if(fade != 0) {
         CLAMP(delta);
         f32 alphaMult = 0.0f;
-        f32 halfPI = M_PI / 2.0f;
         if(fade > 0) {
             /* @Note: sin(0 ... pi/2) == 0 ... 1 */
             alphaMult = sin(delta * halfPI);
@@ -313,7 +321,7 @@ main(int argc, char **argv)
                 struct timespec startClock = {};
                 struct timespec endClock = {};
                 clockid_t clockType = CLOCK_MONOTONIC;
-                f32 targetMSPF = 1000.0f / 10.0f;
+                f32 targetMSPF = 1000.0f / 30.0f;
                 f32 elapsedMSPF = 0.0f;
                 clock_gettime(clockType, &startClock);
 
@@ -324,8 +332,11 @@ main(int argc, char **argv)
                 while(running) {
                     handleEvents(&x11, &fade, &shouldClose);
 
-                    if(fade != 0) delta += 0.05f;
-                    drawGradient(&x11, delta, fade);
+                    if(fade != 0) delta += 0.5f * (elapsedMSPF/1000.0f);
+                    /* @Todo: Separate out the gradient and fade code so we can begin to enter
+                     * text in above the gradient.
+                     */
+                    drawGradient(&x11, 0xff222222, delta, fade);
                     if(delta >= 1.0f) {
                         delta = 0.0f;
                         if(fade < 0) XUnmapWindow(x11.display, x11.window);
