@@ -49,4 +49,8 @@ typedef double f64;
 #define SECS_TO_MILLISECS 1000
 #define MILLISECS_TO_SECS 0.001f
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define CLAMP(x) (MIN(MAX(x, 0.0f), 1.0f))
+
 #endif
